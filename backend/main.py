@@ -26,6 +26,11 @@ app.add_middleware(
 )
 
 @app.on_event("startup")
+def print_routes():
+    print("=== Registered FastAPI Routes ===")
+    for route in app.routes:
+        if hasattr(route, "path"):
+            print(f"Route: {route.path}")
 def on_startup():
     create_db_and_tables()
     initialize_knowledge_base("company_policy.pdf")
