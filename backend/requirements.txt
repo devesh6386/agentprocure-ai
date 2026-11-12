@@ -12,7 +12,8 @@ python-dotenv
 pyjwt
 
 
-
+pypdf
+rank_bm25
 langchain
 
 langchain-community
@@ -21,8 +22,7 @@ groq
 langsmith
 
 
-chromadb
-sentence-transformers
+
 
 
 mcp

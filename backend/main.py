@@ -8,6 +8,8 @@ from typing import Optional
 from sqlmodel import Session, select, func
 from database import create_db_and_tables, get_session, PurchaseRequest, VendorOption, OrderTransaction, AuditLog
 from graph import agent_app
+from database import create_db_and_tables, get_session, PurchaseRequest, VendorOption, OrderTransaction, AuditLog
+from rag_policy import initialize_knowledge_base # <-- ADD THIS IMPORT
 import paypal_service
 
 SECRET_KEY = "agentprocure-super-secret-jwt-key"
@@ -26,7 +28,7 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
-
+    initialize_knowledge_base("company_policy.pdf")
 # ----------------- Dummy User Store & JWT Auth -----------------
 DUMMY_USERS = {
     "employee1": {"password": "password123", "role": "employee", "id": "emp_01", "name": "Alex (Engineering)"},

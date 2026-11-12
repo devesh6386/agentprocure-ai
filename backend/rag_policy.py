@@ -1,27 +1,32 @@
 import os
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.retrievers import BM25Retriever
 from langsmith import traceable
 
-# Use a lightweight local embedding model to keep it free
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-VECTOR_DB_DIR = "./chroma_policy_db"
+# Global retriever instance held in lightweight RAM
+retriever = None
 
 def initialize_knowledge_base(pdf_path: str):
-    """Run this once to ingest your company handbook."""
-    loader = PyPDFLoader(pdf_path)
-    docs = loader.load_and_split()
-    Chroma.from_documents(docs, embeddings, persist_directory=VECTOR_DB_DIR)
+    """Run this on server startup to ingest your company handbook."""
+    global retriever
+    if os.path.exists(pdf_path):
+        loader = PyPDFLoader(pdf_path)
+        docs = loader.load_and_split()
+        
+        # BM25 is a genuine Sparse Vector Retrieval algorithm (True RAG)
+        retriever = BM25Retriever.from_documents(docs)
+        retriever.k = 2  # Retrieve the top 2 most relevant chunks
+        print(f"BM25 RAG Retriever initialized with {len(docs)} documents.")
+    else:
+        print(f"Warning: Policy PDF not found at {pdf_path}")
 
 @traceable(name="rag_policy_retriever", tags=["rag", "compliance"])
 def retrieve_company_policy(query: str) -> str:
     """Fetches exact policy rules based on the purchase request."""
-    if not os.path.exists(VECTOR_DB_DIR):
+    global retriever
+    if not retriever:
         return "No specific company policies found. Apply standard budget constraints."
         
-    vectorstore = Chroma(persist_directory=VECTOR_DB_DIR, embedding_function=embeddings)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
-    
+    # Genuine LangChain Retrieval step
     relevant_docs = retriever.invoke(query)
     return "\n".join([doc.page_content for doc in relevant_docs])
