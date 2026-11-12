@@ -1,0 +1,21 @@
+# Protect all environment & secret files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Python / Backend
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite3
+
+# Next.js / Frontend
+node_modules/
+.next/
+out/
+
+# macOS / Editor
+.DS_Store
