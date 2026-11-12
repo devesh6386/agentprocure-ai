@@ -1,6 +1,7 @@
 import os
 import requests
 import time
+import uuid
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -27,7 +28,10 @@ def get_paypal_access_token():
     _token_expiry = time.time() + data["expires_in"] - 60
     return _cached_token
 
-def create_paypal_order(amount: float, idempotency_key: str):
+def create_paypal_order(amount: float, idempotency_key: str = None):
+    if not idempotency_key:
+        idempotency_key = str(uuid.uuid4())
+        
     url = f"{PAYPAL_BASE_URL}/v2/checkout/orders"
     headers = {
         "Content-Type": "application/json",
@@ -42,7 +46,10 @@ def create_paypal_order(amount: float, idempotency_key: str):
     res.raise_for_status()
     return res.json()
 
-def capture_paypal_order(order_id: str, idempotency_key: str):
+def capture_paypal_order(order_id: str, idempotency_key: str = None):
+    if not idempotency_key:
+        idempotency_key = str(uuid.uuid4())
+        
     url = f"{PAYPAL_BASE_URL}/v2/checkout/orders/{order_id}/capture"
     headers = {
         "Content-Type": "application/json",

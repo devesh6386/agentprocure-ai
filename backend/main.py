@@ -8,8 +8,7 @@ from typing import Optional
 from sqlmodel import Session, select, func
 from database import create_db_and_tables, get_session, PurchaseRequest, VendorOption, OrderTransaction, AuditLog
 from graph import agent_app
-from database import create_db_and_tables, get_session, PurchaseRequest, VendorOption, OrderTransaction, AuditLog
-from rag_policy import initialize_knowledge_base # <-- ADD THIS IMPORT
+from rag_policy import initialize_knowledge_base
 import paypal_service
 
 SECRET_KEY = "agentprocure-super-secret-jwt-key"
@@ -19,7 +18,7 @@ app = FastAPI(title="AgentProcure AI API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://agentprocure-ai.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,9 +30,12 @@ def print_routes():
     for route in app.routes:
         if hasattr(route, "path"):
             print(f"Route: {route.path}")
+
+@app.on_event("startup")
 def on_startup():
     create_db_and_tables()
     initialize_knowledge_base("company_policy.pdf")
+
 # ----------------- Dummy User Store & JWT Auth -----------------
 DUMMY_USERS = {
     "employee1": {"password": "password123", "role": "employee", "id": "emp_01", "name": "Alex (Engineering)"},
@@ -128,7 +130,6 @@ def chat_endpoint(
     )
     db.commit()
 
-    # Scope memory thread to the authenticated user ID
     config = {"configurable": {"thread_id": f"{user['id']}:{req.session_id}"}}
     result = agent_app.invoke(
         {
@@ -219,13 +220,15 @@ def create_paypal_order(
         raise HTTPException(status_code=400, detail="No vendor options found for this request.")
 
     actual_price = opt.price
-    order_res = paypal_service.create_paypal_order(actual_price)
+    idempotency_key = str(uuid.uuid4())
+    order_res = paypal_service.create_paypal_order(actual_price, idempotency_key=idempotency_key)
 
     txn = OrderTransaction(
         request_id=req.request_id,
         paypal_order_id=order_res["id"],
         amount=actual_price,
         status="CREATED",
+        idempotency_key=idempotency_key
     )
     db.add(txn)
     db.commit()
